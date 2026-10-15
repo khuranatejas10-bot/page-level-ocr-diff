@@ -6,7 +6,7 @@
 [![IEEE IoTJ 2024](https://img.shields.io/badge/IEEE%20IoTJ-2024-green.svg)](https://doi.org/10.1109/JIOT.2024.3390700)
 [![IEEE Access 2025](https://img.shields.io/badge/IEEE%20Access-2025-green.svg)](https://doi.org/10.1109/ACCESS.2025.3572001)
 
-A state-of-the-art Optical Character Recognition (OCR) and layout reconstruction framework combining two cutting-edge research paradigms:
+A state-of-the-art Optical Character Recognition (OCR) and layout reconstruction framework synthesizing two cutting-edge research paradigms:
 
 1. **OCR-Diff (IEEE Internet of Things Journal, 2024)**:  
    *“OCR-Diff: A Two-Stage Deep Learning Framework for Optical Character Recognition Using Diffusion Model in Industrial Internet of Things”*  
@@ -24,7 +24,7 @@ A state-of-the-art Optical Character Recognition (OCR) and layout reconstruction
                                              │
                                              ▼
                  ┌────────────────────────────────────────────────────────┐
-                 │       FourTensorNet (IEEE Access 2025 Backbone)       │
+                 │       FourHeadDetector (IEEE Access 2025 Backbone)     │
                  │   Outputs: Affinity (A), Region (R),                   │
                  │            Orientation (32 Bins), Scale (10 Bins)      │
                  └───────────────────────────┬────────────────────────────┘
@@ -47,7 +47,7 @@ A state-of-the-art Optical Character Recognition (OCR) and layout reconstruction
                                              ▼
                  ┌────────────────────────────────────────────────────────┐
                  │         Topological Reading Order Resolution           │
-                 │   Intra-line: x' sort | Inter-line: f_i(x_avg) sort    │
+                 │   XY-Cut Columns -> Inter-line f_i(x_avg) -> Intra-line│
                  └───────────────────────────┬────────────────────────────┘
                                              │
                                              ▼
@@ -60,7 +60,7 @@ A state-of-the-art Optical Character Recognition (OCR) and layout reconstruction
                                              ▼
                  ┌────────────────────────────────────────────────────────┐
                  │        Recognition & Linguistic Post-Processing        │
-                 │   - CTC / Attention Recognition                        │
+                 │   - ResNet CNN + CTC Sequence Decoding                 │
                  │   - WordNinja unigram frequency word splitting         │
                  │   - Bleed-through confidence threshold rejection       │
                  └───────────────────────────┬────────────────────────────┘
@@ -99,11 +99,21 @@ A state-of-the-art Optical Character Recognition (OCR) and layout reconstruction
 ### Installation
 
 ```bash
-git clone https://github.com/khuranatejas10-bot/page-level-ocr-diff.git
-cd page-level-ocr-diff
+git clone https://github.com/khuranatejas10-bot/image-to-text-retrieval.git
+cd image-to-text-retrieval
 
 # Install dependencies
 pip install -r requirements.txt
+```
+
+### 1-Minute Smoke Test
+
+Verify all components end-to-end (data gen, detector, recognizer, diffusion SR, full pipeline inference, 35 unit tests):
+
+```bash
+python cli.py smoke-test
+# or
+python scripts/run_smoke_test.py --quick
 ```
 
 ### CLI Document Extraction
@@ -112,18 +122,18 @@ Extract structured text from any camera-captured image, receipt, or book page:
 
 ```bash
 # Basic extraction with reading order preserved
-python cli.py --image path/to/document.jpg --output results.json --save-vis vis.jpg
+python cli.py --image path/to/document.jpg --output results.txt --save-vis vis.png
 
-# Enable high-fidelity diffusion super-resolution (e.g. 5 steps)
-python cli.py --image path/to/document.jpg --steps 5 --save-vis vis.jpg
-
-# Evaluate with Ground-Truth text for TBR-L, CER, and Edit Distance
+# With ground-truth evaluation (CER, WER, TBR-L)
 python cli.py --image path/to/document.jpg --gt ground_truth.txt
+
+# Disable diffusion super-resolution for maximum throughput
+python cli.py --image path/to/document.jpg --no-diffusion
 ```
 
 ### Interactive Web Dashboard
 
-Launch the Flask web server with real-time 4-tensor visualization, Delaunay layout graphs, and diffusion before/after comparisons:
+Launch the web application with real-time 4-tensor visualization, Delaunay layout graphs, and diffusion before/after comparisons:
 
 ```bash
 python app.py
@@ -132,38 +142,115 @@ Open [http://localhost:5000](http://localhost:5000) in your browser.
 
 ---
 
-## 🧪 Verification & Test Suite
+## 🏋️‍♂️ Training & Evaluation Workflow
 
-Run the complete unit and mathematical verification test suite:
-
+### 1. Generate Synthetic Page Dataset
 ```bash
-python test_unified_system.py
+python scripts/generate_synthetic_data.py --output data/synthetic --train 200 --val 40 --test 40
 ```
 
-All 10 unit tests verify:
-- Cosine schedule, forward diffusion corruption, and reverse residual sampling.
+### 2. Inspect Dataset Manifest & Statistics
+```bash
+python scripts/inspect_dataset.py --manifest data/synthetic/train_manifest.json --data_root data/synthetic --visualise
+```
+
+### 3. Stage 1: Train Four-Head Detector
+```bash
+python scripts/train_detector.py --config configs/default.yaml
+```
+
+### 4. Stage 2: Train CTC Word Recognizer
+```bash
+python scripts/train_recognizer.py --config configs/default.yaml
+```
+
+### 5. Stage 4a: Pretrain OCR-Diff Diffusion SR
+```bash
+python scripts/train_diffusion_sr.py --config configs/default.yaml
+```
+
+### 6. Stage 4b: Fine-tune Diffusion SR with Recognition Loss
+```bash
+python scripts/finetune_diffusion_for_ocr.py --config configs/default.yaml \
+    --sr_ckpt runs/diffusion_sr/ckpt_pretrain_final.pt \
+    --rec_ckpt runs/recognizer/ckpt_final.pt
+```
+
+### 7. Stage 5: Evaluate Full Pipeline
+```bash
+python scripts/evaluate.py --config configs/smoke_test.yaml \
+    --det_ckpt runs/smoke/detector/ckpt_final.pt \
+    --rec_ckpt runs/smoke/recognizer/ckpt_final.pt \
+    --manifest data/smoke/test_manifest.json
+```
+
+---
+
+## 🧪 Unit & Mathematical Test Suite
+
+Run all unit tests covering mathematics, model shapes, loss functions, Delaunay grouping, polynomial fitting, and full integration:
+
+```bash
+pytest tests/ -v
+```
+
+All 35 tests verify:
+- Cosine beta schedule, forward diffusion corruption, and reverse residual sampling.
 - Linear attention $O(N)$ projection invariance.
 - 4-tensor network forward pass and masked cross-entropy loss.
 - Delaunay triangulation scale-adaptive edge pruning.
 - Curvilinear 4th-order polynomial line fitting and topological reading order sorting.
 - WordNinja splitting and bleed-through rejection thresholding.
-- Levenshtein Edit Distance, CER, and Text-Block ROUGE-L (TBR-L) calculations.
+- Levenshtein Edit Distance, CER, WER, and Text-Block ROUGE-L (TBR-L) calculations.
+- End-to-end full page OCR pipeline execution.
 
 ---
 
 ## 📁 Repository Structure
 
 ```
-├── ocr_diff.py              # IEEE IoTJ 2024: OCR-Diff Conditional U-Net, Linear Attention & Diffusion
-├── page_ocr.py              # IEEE Access 2025: 4-Tensor Net, Delaunay Triangulation, Curvilinear Lines
-├── metrics.py               # TBR-L, Character Error Rate (CER), Levenshtein Edit Distance
-├── unified_ocr.py           # Unified Master Engine integrating both research frameworks
-├── cli.py                   # Command-line interface with JSON/Vis export & metrics
-├── app.py                   # Web dashboard & REST API server
-├── test_unified_system.py   # Unit test suite verifying mathematical formulations
-├── templates/               # Web application templates
-├── static/                  # Styles, scripts, and UI assets
-└── requirements.txt         # Project dependencies
+├── configs/
+│   ├── default.yaml            # Full training configuration
+│   └── smoke_test.yaml         # Fast smoke test configuration
+├── docs/
+│   ├── architecture.md         # Detailed mathematical equations & architecture
+│   ├── training.md             # Training guide and hyperparameters
+│   └── evaluation.md           # Evaluation metrics and benchmarks
+├── scripts/
+│   ├── generate_synthetic_data.py  # Page, character boxes & target maps generator
+│   ├── inspect_dataset.py          # Manifest validator & stats inspector
+│   ├── train_detector.py           # Four-head detector trainer
+│   ├── train_recognizer.py         # CTC word recognizer trainer
+│   ├── train_diffusion_sr.py       # OCR-Diff MSE pretrainer
+│   ├── finetune_diffusion_for_ocr.py # Recognition-aware diffusion fine-tuner
+│   ├── evaluate.py                 # Page-level CER, WER, TBR-L evaluator
+│   ├── infer.py                    # Standalone inference runner
+│   └── run_smoke_test.py           # Automated 7-stage CI/smoke test
+├── src/pageocrdiff/
+│   ├── config.py               # YAML-serializable dataclass configs
+│   ├── models/
+│   │   ├── detector.py         # 4-head detector (Region, Affinity, Orient, Scale)
+│   │   ├── recognizer.py       # ResNet-CNN + BiLSTM + CTC recognizer
+│   │   └── diffusion_sr.py     # OCR-Diff U-Net with Linear Attention
+│   ├── data/
+│   │   ├── synthetic_page_generator.py # Synthetic document engine
+│   │   └── datasets.py         # PyTorch Dataset adapters & collators
+│   ├── pipeline/
+│   │   ├── components.py       # CC extraction & pixel-weighted voting
+│   │   ├── grouping.py         # Delaunay blocks & polynomial lines
+│   │   ├── reading_order.py    # XY-cut columns & baseline sort
+│   │   ├── preprocessing.py    # CLAHE, deskew & padding
+│   │   ├── postprocess.py      # WordNinja & bleed-through filter
+│   │   └── inference.py        # End-to-end PageOCRPipeline engine
+│   ├── metrics/
+│   │   └── metrics.py          # CER, WER, TBR-L, IoU, PSNR, SSIM
+│   └── utils/
+│       └── utils.py            # Checkpointing, logging, visualizer
+├── tests/
+│   └── test_pageocrdiff.py     # 35 test cases
+├── cli.py                      # Unified CLI entrypoint
+├── app.py                      # Interactive web interface
+└── requirements.txt            # Python dependencies
 ```
 
 ---

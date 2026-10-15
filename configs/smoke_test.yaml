@@ -1,0 +1,64 @@
+project_name: PageOCRDiff
+seed: 42
+device: auto
+data_root: data/synthetic
+output_dir: runs
+num_workers: 0
+mixed_precision: false
+
+detector:
+  backbone: resnet18
+  pretrained_backbone: false   # Avoid download for smoke test
+  output_stride: 2
+  num_orientation_bins: 32
+  num_scale_bins: 10
+  scale_bin_edges: [0, 8, 12, 18, 26, 36, 48, 62, 78, 96, 1.0e6]
+  lambda_scale: 0.1
+  lambda_orientation: 0.3
+  lr: 1.0e-4
+  lr_decay_factor: 0.8
+  lr_decay_every: 2000
+  max_iterations: 10           # Very short for smoke test
+  batch_size: 2
+  image_size: 256              # Smaller for speed
+  region_threshold: 0.4
+  affinity_threshold: 0.4
+  min_component_area: 10
+  min_component_score: 0.3
+  delaunay_epsilon: 2.0
+  max_poly_degree: 4
+  line_deviation_scale_factor: 0.25
+
+recognizer:
+  backbone: resnet_small
+  use_bilstm: false
+  bilstm_hidden: 256
+  img_height: 32
+  img_width: 128
+  charset: "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ "
+  blank_index: 0
+  lr: 1.0e-4
+  batch_size: 4
+  max_iterations: 10
+  grad_clip: 5.0
+
+diffusion_sr:
+  T: 100                       # Short schedule for smoke test
+  lr_pretrain: 1.0e-4
+  lr_finetune: 5.0e-5
+  hr_height: 32
+  hr_width: 128
+  lr_height: 16
+  lr_width: 64
+  base_channels: 16            # Tiny model for smoke test
+  num_res_blocks: 10
+  time_emb_dim: 32
+  fe_channels: 16
+  fe_num_blocks: 5
+  ddim_steps: 5
+  use_ddim: true
+  recon_weight: 1.0
+  recog_weight: 0.01
+  enhancement_confidence_threshold: 0.5
+  batch_size: 2
+  max_iterations: 10

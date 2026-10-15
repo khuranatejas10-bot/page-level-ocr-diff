@@ -24,3 +24,14 @@ Thumbs.db
 
 # Task and log files
 *.log
+
+# Checkpoints and Models
+*.pt
+*.pth
+*.onnx
+runs/
+
+# Datasets and cache
+data/
+reports/
+.pytest_cache/
