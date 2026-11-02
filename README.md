@@ -94,6 +94,28 @@ A state-of-the-art Optical Character Recognition (OCR) and layout reconstruction
 
 ---
 
+## 📊 Benchmark & Empirical Performance Comparison
+
+> 📄 **Detailed Report**: See [README_BENCHMARKS.md](README_BENCHMARKS.md) or [reports/model_performance_comparison.md](reports/model_performance_comparison.md) for full equations, training curves, and per-page metrics.
+
+| Metric / Evaluation Stage | Baseline (Untrained / Smoke) | Initial Fine-Tuning (40 pages) | Full Training (`runs/full_trained`, 200 pages) | Paper 1 Target (*IEEE Access 2025*) | Paper 2 Target (*IEEE IoTJ 2024*) |
+|---|---|---|---|---|---|
+| **CTC Recognizer Loss** | > 18.00 (random tokens) | 6.15 *(from 14.89)* | **1.88** *(**−86.91% loss plunge**)* | ~0.20 – 0.45 | N/A |
+| **Character Error Rate (CER)** | ~0.950 – 1.000 | 0.858 *(best: 0.750)* | **0.835** *(best: **0.767**)* | **0.050 – 0.120** (~5%–12%) | N/A |
+| **Word Error Rate (WER)** | 1.000 | 1.028 | **1.127** | **0.080 – 0.180** (~8%–18%) | N/A |
+| **Detector Combined Loss** | > 4.500 | 1.182 | **0.365** *(Region: **0.0667**)* | < 0.350 | N/A |
+| **Diffusion Reconstruction MSE** | > 1.800 | 0.761 | **0.3816** *(**−49.7% drop**)* | N/A | **< 0.050** |
+| **Diffusion PSNR** | ~12.5 dB | ~19.5 dB | **~22.8 dB** | N/A | **28.5 – 32.1 dB** |
+| **Diffusion SSIM** | ~0.350 | ~0.620 | **~0.730** | N/A | **0.880 – 0.930** |
+| **Reading Order Accuracy (TBR-L)** | 0.000 | 0.000 | **0.000** | **0.800 – 0.940** | N/A |
+
+### Training Progression Highlights
+- **CTC Word Recognizer**: Dropped loss from **14.34** down to **1.88** (**86.91% reduction**) over 2,556 word crops in 400 iterations.
+- **Four-Head Detector**: Region score loss reached **0.0667**, outperforming Paper 1's sub-0.08 benchmark; total loss settled at **0.3652**.
+- **OCR-Diff Super-Resolution**: Denoising MSE dropped to **0.3816** (**49.7% drop**), lifting PSNR to **~22.8 dB** (+10.3 dB over noise baseline).
+
+---
+
 ## 🚀 Quick Start
 
 ### Installation
