@@ -270,10 +270,36 @@ All 35 tests verify:
 │       └── utils.py            # Checkpointing, logging, visualizer
 ├── tests/
 │   └── test_pageocrdiff.py     # 35 test cases
+├── configs/
+│   ├── kaggle_gpu.yaml         # High-speed GPU config (Tesla T4 / P100)
+│   └── full_train.yaml         # Comprehensive training parameters
+├── scripts/
+│   ├── run_kaggle_gpu.py       # Automated 1-click master Kaggle GPU runner
+│   ├── download_kaggle_dataset.py # Auto-detects /kaggle/input or generates data
+│   └── train_pipeline.py       # End-to-end training orchestrator
 ├── cli.py                      # Unified CLI entrypoint
 ├── app.py                      # Interactive web interface
 └── requirements.txt            # Python dependencies
 ```
+
+---
+
+## ⚡ 1-Click Kaggle GPU Training & Paper Benchmark Comparison
+
+To train the entire pipeline on a free Kaggle GPU (Tesla T4 or P100) with **paper-scale iterations** and compare against the published papers:
+
+1. In a new Kaggle Notebook, set **Accelerator: GPU T4 x2** (or **P100**) and **Internet: ON**.
+2. Run:
+```bash
+!git clone https://github.com/khuranatejas10-bot/image-to-text-retrieval.git
+%cd image-to-text-retrieval
+!pip install -r requirements.txt pyyaml scipy scikit-image
+!python scripts/run_kaggle_gpu.py
+```
+*Outputs `pageocrdiff_gpu_checkpoints.zip` to `/kaggle/working` for 1-click download, and prints the full benchmark comparison matrix against Paper 1 (IEEE Access 2025) and Paper 2 (IEEE IoTJ 2024).*
+
+For detailed cell-by-cell notebook instructions, see [docs/kaggle_gpu_training_guide.md](docs/kaggle_gpu_training_guide.md).  
+For the complete empirical comparison matrix across all iterations and papers, see [PERFORMANCE_MATRIX_COMPARISON.md](PERFORMANCE_MATRIX_COMPARISON.md).
 
 ---
 

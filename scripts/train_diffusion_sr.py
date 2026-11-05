@@ -156,6 +156,7 @@ def main():
             ckptr.save(f"step{step}", model, optimizer, step)
 
     logger.info("Diffusion SR pretraining complete.")
+    ckptr.save("final", model, optimizer, step)
     ckptr.save("pretrain_final", model, optimizer, step)
 
 
