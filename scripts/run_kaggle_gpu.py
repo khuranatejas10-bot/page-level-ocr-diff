@@ -57,12 +57,17 @@ def run_cmd(cmd, desc):
     print_banner(desc)
     print(f"Executing: {' '.join(cmd)}\n")
     t0 = time.time()
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{repo_root}:{env.get('PYTHONPATH', '')}"
     proc = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-        bufsize=1
+        bufsize=1,
+        env=env,
+        cwd=repo_root
     )
     for line in proc.stdout:
         print(line, end="", flush=True)
