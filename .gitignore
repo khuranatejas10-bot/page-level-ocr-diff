@@ -16,7 +16,7 @@ ENV/
 *.sqlite3
 
 # Uploaded and intermediate files
-uploads/
+/uploads/
 
 # OS files
 .DS_Store
@@ -29,9 +29,13 @@ Thumbs.db
 *.pt
 *.pth
 *.onnx
-runs/
+/runs/
 
-# Datasets and cache
-data/
-reports/
-.pytest_cache/
+# Datasets and cache (anchored to root only)
+/data/
+/reports/
+/.pytest_cache/
+
+# Ensure source package data directory is tracked
+!src/pageocrdiff/data/
+!src/pageocrdiff/data/**
