@@ -70,11 +70,27 @@ def cmd_infer(args):
         detector.load_state_dict(st["model"])
         logger.info(f"Loaded detector weights: {det_ckpt}")
 
-    recognizer = CTCRecognizer(num_classes=vocab.num_classes)
     rec_ckpt = getattr(args, "rec_ckpt", None) or "runs/smoke/recognizer/ckpt_final.pt"
+    use_bilstm = getattr(cfg.recognizer, "use_bilstm", False)
+    bilstm_hidden = getattr(cfg.recognizer, "bilstm_hidden", 256)
+    rec_st = None
     if os.path.exists(rec_ckpt):
-        st = torch.load(rec_ckpt, map_location="cpu", weights_only=False)
-        recognizer.load_state_dict(st["model"])
+        rec_st = torch.load(rec_ckpt, map_location="cpu", weights_only=False)
+        m_st = rec_st.get("model", rec_st)
+        if any("bilstm" in k for k in m_st.keys()):
+            use_bilstm = True
+            if "classifier.weight" in m_st:
+                bilstm_hidden = m_st["classifier.weight"].shape[1] // 2
+        else:
+            use_bilstm = False
+
+    recognizer = CTCRecognizer(
+        num_classes=vocab.num_classes,
+        use_bilstm=use_bilstm,
+        bilstm_hidden=bilstm_hidden,
+    )
+    if rec_st is not None:
+        recognizer.load_state_dict(rec_st["model"])
         logger.info(f"Loaded recognizer weights: {rec_ckpt}")
 
     sr_model = None

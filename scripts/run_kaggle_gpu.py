@@ -144,32 +144,52 @@ def main():
     print(f"   Config: {config_path}")
     print("*" * 75)
 
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--eval-only", action="store_true", help="Skip training and run evaluation directly")
+    parser.add_argument("--skip-trained", action="store_true", help="Skip stages whose checkpoints already exist")
+    args, _ = parser.parse_known_args()
+
     # 1. Environment Check
     check_gpu_environment()
 
     # 2. Step 1: Dataset Preparation (Auto download, attached input scan, or generation)
-    data_cmd = [
-        py, "scripts/download_kaggle_dataset.py",
-        "--source", "auto",
-        "--output-dir", "data/kaggle",
-        "--img-size", "512",
-        "--train-pages", "100",
-        "--val-pages", "20",
-        "--test-pages", "20"
-    ]
-    run_cmd(data_cmd, "2/6: Dataset Preparation & Ground-Truth Generation")
+    if not (args.eval_only and os.path.exists("data/kaggle/test_manifest.json")):
+        data_cmd = [
+            py, "scripts/download_kaggle_dataset.py",
+            "--source", "auto",
+            "--output-dir", "data/kaggle",
+            "--img-size", "512",
+            "--train-pages", "100",
+            "--val-pages", "20",
+            "--test-pages", "20"
+        ]
+        run_cmd(data_cmd, "2/6: Dataset Preparation & Ground-Truth Generation")
+
+    det_ckpt = "runs/kaggle_gpu/detector/ckpt_final.pt"
+    rec_ckpt = "runs/kaggle_gpu/recognizer/ckpt_final.pt"
+    sr_ckpt = "runs/kaggle_gpu/diffusion_sr/ckpt_final.pt"
 
     # 3. Step 2: Train Four-Head Detector
-    det_cmd = [py, "scripts/train_detector.py", "--config", config_path]
-    run_cmd(det_cmd, "3/6: Training Four-Head Text Detector (CUDA)")
+    if not args.eval_only and not (args.skip_trained and os.path.exists(det_ckpt)):
+        det_cmd = [py, "scripts/train_detector.py", "--config", config_path]
+        run_cmd(det_cmd, "3/6: Training Four-Head Text Detector (CUDA)")
+    else:
+        print_banner("3/6: Four-Head Detector Checkpoint Found -> Skipping Training")
 
     # 4. Step 3: Train CTC Recognizer
-    rec_cmd = [py, "scripts/train_recognizer.py", "--config", config_path]
-    run_cmd(rec_cmd, "4/6: Training CTC Word Recognizer (CUDA, 10,000 steps)")
+    if not args.eval_only and not (args.skip_trained and os.path.exists(rec_ckpt)):
+        rec_cmd = [py, "scripts/train_recognizer.py", "--config", config_path]
+        run_cmd(rec_cmd, "4/6: Training CTC Word Recognizer (CUDA, 10,000 steps)")
+    else:
+        print_banner("4/6: CTC Recognizer Checkpoint Found -> Skipping Training")
 
     # 5. Step 4: Train Diffusion Super-Resolution
-    sr_cmd = [py, "scripts/train_diffusion_sr.py", "--config", config_path]
-    run_cmd(sr_cmd, "5/6: Training OCR-Diff Diffusion Model (CUDA, 3,000 steps)")
+    if not args.eval_only and not (args.skip_trained and os.path.exists(sr_ckpt)):
+        sr_cmd = [py, "scripts/train_diffusion_sr.py", "--config", config_path]
+        run_cmd(sr_cmd, "5/6: Training OCR-Diff Diffusion Model (CUDA, 3,000 steps)")
+    else:
+        print_banner("5/6: Diffusion Model Checkpoint Found -> Skipping Training")
 
     # 6. Evaluation
     eval_cmd = [

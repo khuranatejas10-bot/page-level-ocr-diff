@@ -78,11 +78,27 @@ def main():
         logger.warning("Using randomly initialized detector (no checkpoint provided)")
 
     vocab = Vocabulary(cfg.recognizer.charset)
-    recognizer = CTCRecognizer(num_classes=vocab.num_classes)
+    use_bilstm = getattr(cfg.recognizer, "use_bilstm", False)
+    bilstm_hidden = getattr(cfg.recognizer, "bilstm_hidden", 256)
+    rec_state = None
     if args.rec_ckpt and os.path.exists(args.rec_ckpt):
-        state = torch.load(args.rec_ckpt, map_location="cpu", weights_only=False)
-        recognizer.load_state_dict(state["model"])
-        logger.info(f"Loaded recognizer: {args.rec_ckpt}")
+        rec_state = torch.load(args.rec_ckpt, map_location="cpu", weights_only=False)
+        m_state = rec_state.get("model", rec_state)
+        if any("bilstm" in k for k in m_state.keys()):
+            use_bilstm = True
+            if "classifier.weight" in m_state:
+                bilstm_hidden = m_state["classifier.weight"].shape[1] // 2
+        else:
+            use_bilstm = False
+
+    recognizer = CTCRecognizer(
+        num_classes=vocab.num_classes,
+        use_bilstm=use_bilstm,
+        bilstm_hidden=bilstm_hidden,
+    )
+    if rec_state is not None:
+        recognizer.load_state_dict(rec_state["model"])
+        logger.info(f"Loaded recognizer: {args.rec_ckpt} (use_bilstm={use_bilstm}, hidden={bilstm_hidden})")
     else:
         logger.warning("Using randomly initialized recognizer (no checkpoint provided)")
 
